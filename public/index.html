@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Legible — papers &amp; specs in plain English</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔭</text></svg>" />
+<link rel="stylesheet" href="/styles.css" />
+<script src="/vendor/purify/purify.min.js"></script>
+</head>
+<body>
+
+<div class="app">
+  <!-- ───────────────────────────── sidebar ───────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">◑</div>
+      <div>
+        <div class="brand-name">Legible</div>
+        <div class="brand-sub" id="providerBadge">—</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="newProjectBtn">
+      <span class="plus">+</span> New Project
+    </button>
+
+    <div class="search-wrap">
+      <input id="searchInput" class="search" type="search" placeholder="Search projects…" autocomplete="off" />
+    </div>
+
+    <nav class="research-list" id="projectList"></nav>
+
+    <div class="sidebar-foot">
+      <button class="btn btn-ghost" id="templatesBtn">Templates</button>
+      <button class="btn btn-ghost" id="settingsBtn">Settings</button>
+    </div>
+  </aside>
+
+  <!-- ────────────────────────────── main ─────────────────────────────── -->
+  <main class="main" id="main">
+    <section class="empty" id="emptyState">
+      <div class="empty-glow"></div>
+      <div class="empty-inner">
+        <h1>Any paper. Any spec.<br /><span class="grad">Explained like you're new.</span></h1>
+        <p>
+          Start an empty project and let the AI console find the right papers and RFCs for you —
+          or drop in a URL, PDF or doc yourself. Each source opens in its own tab with a plain-English
+          breakdown, architecture diagrams, the maths worked through slowly, and the original alongside it.
+        </p>
+        <button class="btn btn-primary btn-lg" id="emptyNewBtn"><span class="plus">+</span> Create a project</button>
+        <div class="empty-steps">
+          <div class="step"><b>1</b> Name a project</div>
+          <div class="arrow">→</div>
+          <div class="step"><b>2</b> Ask the console, or add a source</div>
+          <div class="arrow">→</div>
+          <div class="step"><b>3</b> One tab per paper</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace" id="workspace" hidden>
+      <header class="ws-head">
+        <div class="ws-title-row">
+          <div>
+            <div class="report-kicker">Project</div>
+            <h1 id="wsName"></h1>
+          </div>
+          <div class="ws-actions">
+            <button class="btn btn-ghost btn-sm" id="editProjectBtn">Edit</button>
+            <button class="btn btn-danger-ghost btn-sm" id="deleteProjectBtn">Delete</button>
+          </div>
+        </div>
+        <p class="ws-goal" id="wsGoal"></p>
+        <div class="tabbar" id="tabbar"></div>
+      </header>
+      <div class="ws-body" id="wsBody"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ───────────────────────── new project modal ─────────────────────────── -->
+<div class="modal-backdrop" id="projectModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
+    <header class="modal-head">
+      <h2 id="projectModalTitle">New project</h2>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </header>
+    <div class="modal-body">
+      <label class="field">
+        <span class="label">Project name</span>
+        <input id="projectName" class="input input-lg" placeholder="e.g. How LLMs actually work" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span class="label">What are you trying to understand? <span class="opt">optional</span></span>
+        <textarea id="projectGoal" class="input textarea" rows="3"
+          placeholder="e.g. I'm a backend dev. I want to understand transformers, attention, and why context windows are limited — from the original papers."></textarea>
+        <span class="hint">The AI console uses this to pick better sources. You can start empty and fill it in later.</span>
+      </label>
+    </div>
+    <footer class="modal-foot">
+      <div class="foot-msg" id="projectModalError"></div>
+      <div class="foot-actions">
+        <button class="btn btn-primary" id="saveProjectBtn">Create project</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ───────────────────────── new source (tab) modal ────────────────────── -->
+<div class="modal-backdrop" id="newModal" hidden>
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="newModalTitle">
+    <header class="modal-head">
+      <h2 id="newModalTitle">Add a source</h2>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </header>
+
+    <div class="modal-body">
+      <div class="steps-rail">
+        <div class="rail-step is-active" data-step="1"><i>1</i> Name</div>
+        <div class="rail-step" data-step="2"><i>2</i> Source</div>
+        <div class="rail-step" data-step="3"><i>3</i> Depth</div>
+      </div>
+
+      <div class="wizard-step is-active" data-step="1">
+        <label class="field">
+          <span class="label">What should we call this tab?</span>
+          <input id="nameInput" class="input input-lg" placeholder="e.g. Attention Is All You Need" autocomplete="off" />
+          <span class="hint">Just a label — it does not affect the output.</span>
+        </label>
+      </div>
+
+      <div class="wizard-step" data-step="2">
+        <div class="tabs" id="sourceTabs">
+          <button class="tab is-active" data-source="url">Link</button>
+          <button class="tab" data-source="file">PDF / Doc</button>
+          <button class="tab" data-source="text">Paste text</button>
+        </div>
+
+        <div class="source-pane is-active" data-source="url">
+          <label class="field">
+            <span class="label">Paste a URL</span>
+            <input id="urlInput" class="input" placeholder="https://arxiv.org/abs/1706.03762" autocomplete="off" />
+            <span class="hint">arXiv, RFC pages, docs, blog posts, or a direct link to a PDF. arXiv abstract links are fetched as the full PDF automatically.</span>
+          </label>
+        </div>
+
+        <div class="source-pane" data-source="file">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button">
+            <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt,.md,.html,.htm" hidden />
+            <div class="dz-icon">⇪</div>
+            <div class="dz-title">Drop a file here, or click to browse</div>
+            <div class="dz-sub">PDF, DOCX, TXT, Markdown or HTML · up to 80 MB</div>
+            <div class="dz-file" id="dzFile" hidden></div>
+          </div>
+          <p class="hint">Scanned PDFs with no text layer will not work — they need OCR first.</p>
+        </div>
+
+        <div class="source-pane" data-source="text">
+          <label class="field">
+            <span class="label">Paste the document text</span>
+            <textarea id="textInput" class="input textarea" rows="9" placeholder="Paste the full text of the paper, RFC or spec…"></textarea>
+            <span class="hint">Useful when a page is behind a login or renders with JavaScript.</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="wizard-step" data-step="3">
+        <span class="label">How deep should the explanation go?</span>
+        <div class="template-grid" id="templatePicker"></div>
+      </div>
+    </div>
+
+    <footer class="modal-foot">
+      <div class="foot-msg" id="newModalError"></div>
+      <div class="foot-actions">
+        <button class="btn btn-ghost" id="backBtn" hidden>Back</button>
+        <button class="btn btn-primary" id="nextBtn">Continue</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ─────────────────────────── templates modal ─────────────────────────── -->
+<div class="modal-backdrop" id="templatesModal" hidden>
+  <div class="modal modal-wide" role="dialog" aria-modal="true">
+    <header class="modal-head">
+      <h2>Research templates</h2>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </header>
+    <div class="modal-body split">
+      <div class="split-left">
+        <div class="list-head">
+          <span>Your templates</span>
+          <button class="btn btn-tiny" id="newTemplateBtn">+ New</button>
+        </div>
+        <div id="templateList" class="template-list"></div>
+      </div>
+      <div class="split-right">
+        <form id="templateForm" class="template-form">
+          <label class="field">
+            <span class="label">Name</span>
+            <input class="input" name="name" placeholder="e.g. Security Spec Review" />
+          </label>
+          <label class="field">
+            <span class="label">Description</span>
+            <input class="input" name="description" placeholder="One line about when to use it" />
+          </label>
+          <label class="field">
+            <span class="label">Write for</span>
+            <select class="input" name="audience" id="audienceSelect"></select>
+          </label>
+          <div class="field">
+            <span class="label">Sections</span>
+            <div class="section-checks" id="sectionChecks"></div>
+          </div>
+          <label class="field">
+            <span class="label">Extra instructions <span class="opt">optional</span></span>
+            <textarea class="input textarea" name="extra_instructions" rows="4"
+              placeholder="e.g. Always include a sequence diagram of the handshake. Call out anything security-relevant."></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="button" class="btn btn-danger-ghost" id="deleteTemplateBtn" hidden>Delete</button>
+            <span class="spacer"></span>
+            <button type="submit" class="btn btn-primary" id="saveTemplateBtn">Save template</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────── settings modal ─────────────────────────── -->
+<div class="modal-backdrop" id="settingsModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <header class="modal-head">
+      <h2>Settings</h2>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </header>
+    <div class="modal-body">
+      <div class="field">
+        <span class="label">Engine</span>
+        <div class="provider-cards" id="providerCards"></div>
+      </div>
+
+      <label class="field" data-provider-field="claude">
+        <span class="label">Claude model <span class="opt">optional</span></span>
+        <input class="input" id="claudeModel" placeholder="leave blank for the CLI default" />
+      </label>
+
+      <label class="field" data-provider-field="codex" hidden>
+        <span class="label">Codex model <span class="opt">optional</span></span>
+        <input class="input" id="codexModel" placeholder="leave blank for the CLI default" />
+      </label>
+
+      <div data-provider-field="anthropic" hidden>
+        <label class="field">
+          <span class="label">Model</span>
+          <input class="input" id="anthropicModel" placeholder="claude-opus-5" />
+        </label>
+        <label class="field">
+          <span class="label">API key</span>
+          <input class="input" id="anthropicKey" type="password" placeholder="sk-ant-…" autocomplete="off" />
+          <span class="hint">Stored in your local SQLite database, never sent anywhere except api.anthropic.com.</span>
+        </label>
+      </div>
+
+      <label class="field">
+        <span class="label">Max characters sent to the model</span>
+        <input class="input" id="maxChars" type="number" min="20000" step="10000" />
+        <span class="hint">Longer documents get the middle thinned out so the start and conclusion always make it through.</span>
+      </label>
+
+      <div class="test-row">
+        <button class="btn btn-ghost" id="testProviderBtn">Test connection</button>
+        <span class="test-result" id="testResult"></span>
+      </div>
+      <p class="hint mono" id="dataDirHint"></p>
+    </div>
+    <footer class="modal-foot">
+      <div class="foot-msg" id="settingsMsg"></div>
+      <div class="foot-actions">
+        <button class="btn btn-primary" id="saveSettingsBtn">Save</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

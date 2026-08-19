@@ -1,0 +1,15 @@
+# generated content: reports, cached audio, uploads, and the access password
+data/
+
+node_modules/
+*.log
+npm-debug.log*
+
+.DS_Store
+.env
+.env.*
+*.local
+
+# editor
+.vscode/
+.idea/

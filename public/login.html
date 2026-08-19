@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Legible</title>
+    <link rel="stylesheet" href="/login.css" />
+  </head>
+  <body>
+    <main class="gate">
+      <div class="mark">
+        <span class="glyph"></span>
+        <div>
+          <h1>Legible</h1>
+          <p class="sub">papers &amp; specs in plain English</p>
+        </div>
+      </div>
+
+      <form id="form" autocomplete="on">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          autofocus
+          required
+          placeholder="••••••••••"
+        />
+        <button type="submit" id="go">Unlock</button>
+        <p class="err" id="err" role="alert" hidden></p>
+      </form>
+
+      <p class="foot">
+        This instance runs on a personal machine. Everything you research stays in a local
+        SQLite file on that machine.
+      </p>
+    </main>
+
+    <script>
+      const form = document.getElementById('form');
+      const err = document.getElementById('err');
+      const go = document.getElementById('go');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        err.hidden = true;
+        go.disabled = true;
+        go.textContent = 'Checking…';
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ password: document.getElementById('password').value }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || 'Could not sign in.');
+          const next = new URLSearchParams(location.search).get('next');
+          location.href = next && next.startsWith('/') ? next : '/';
+        } catch (e2) {
+          err.textContent = e2.message;
+          err.hidden = false;
+          go.disabled = false;
+          go.textContent = 'Unlock';
+          document.getElementById('password').select();
+        }
+      });
+    </script>
+  </body>
+</html>
